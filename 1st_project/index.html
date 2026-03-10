@@ -20,7 +20,6 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-      min-width: 300px;
     }
     h1 {
       font-size: 3rem;
@@ -31,49 +30,75 @@
       font-size: 1.1rem;
       color: #718096;
     }
-    .weather-card {
+    .weather-section {
       margin-top: 1.5rem;
-      padding: 1.2rem;
+    }
+    .weather-title {
+      font-size: 0.9rem;
+      color: #a0aec0;
+      margin-bottom: 0.8rem;
+      letter-spacing: 0.05em;
+    }
+    .forecast-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+    }
+    .forecast-day {
       background: #f7fafc;
-      border-radius: 10px;
       border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 0.7rem 0.4rem;
+      min-width: 72px;
     }
-    .weather-icon {
-      font-size: 3rem;
-      line-height: 1;
+    .forecast-day.today {
+      background: #ebf8ff;
+      border-color: #90cdf4;
     }
-    .weather-temp {
-      font-size: 2.2rem;
+    .day-label {
+      font-size: 0.8rem;
       font-weight: bold;
-      color: #2d3748;
+      color: #4a5568;
+      margin-bottom: 0.4rem;
+    }
+    .forecast-day.today .day-label {
+      color: #2b6cb0;
+    }
+    .day-icon {
+      font-size: 1.6rem;
+      line-height: 1.2;
+    }
+    .day-desc {
+      font-size: 0.7rem;
+      color: #718096;
+      margin: 0.3rem 0;
+      min-height: 2em;
+    }
+    .day-temps {
+      font-size: 0.82rem;
       margin: 0.3rem 0;
     }
-    .weather-desc {
-      font-size: 1rem;
-      color: #4a5568;
+    .temp-high {
+      color: #e53e3e;
+      font-weight: bold;
     }
-    .weather-location {
-      font-size: 0.85rem;
-      color: #a0aec0;
-      margin-top: 0.4rem;
+    .temp-low {
+      color: #3182ce;
     }
-    .weather-details {
-      display: flex;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-top: 0.8rem;
-      font-size: 0.9rem;
-      color: #718096;
+    .day-rain {
+      font-size: 0.75rem;
+      color: #4299e1;
+      margin-top: 0.3rem;
     }
     .weather-loading {
       color: #a0aec0;
       font-size: 0.95rem;
-      padding: 1rem 0;
+      padding: 1.5rem 0;
     }
     .weather-error {
       color: #e53e3e;
       font-size: 0.9rem;
-      padding: 0.8rem 0;
+      padding: 1rem 0;
     }
   </style>
 </head>
@@ -82,8 +107,8 @@
     <h1>Hello World</h1>
     <p>첫 번째 웹페이지입니다.</p>
 
-    <div class="weather-card" id="weather">
-      <div class="weather-loading">위치 정보를 가져오는 중...</div>
+    <div class="weather-section" id="weather">
+      <div class="weather-loading">날씨 정보를 불러오는 중...</div>
     </div>
   </div>
 
@@ -115,28 +140,50 @@
       99: { label: '강한 우박 뇌우', icon: '⛈️' },
     };
 
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
     async function getWeather(lat, lon) {
       const weatherEl = document.getElementById('weather');
       try {
-        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`);
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+          `&timezone=auto&forecast_days=7`
+        );
+        const data = await res.json();
+        const daily = data.daily;
+        const today = new Date().toISOString().slice(0, 10);
 
-        const weatherData = await weatherRes.json();
+        let rows = '';
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(daily.time[i]);
+          const isToday = daily.time[i] === today;
+          const dayLabel = isToday ? '오늘' : dayNames[date.getDay()] + '요일';
+          const dateLabel = `${date.getMonth() + 1}/${date.getDate()}`;
+          const w = weatherCodes[daily.weather_code[i]] || { label: '알 수 없음', icon: '🌡️' };
+          const max = Math.round(daily.temperature_2m_max[i]);
+          const min = Math.round(daily.temperature_2m_min[i]);
+          const rain = daily.precipitation_probability_max[i];
 
-        const current = weatherData.current;
-        const code = current.weather_code;
-        const weather = weatherCodes[code] || { label: '알 수 없음', icon: '🌡️' };
-
-        const city = '스페인 레온';
+          rows += `
+            <div class="forecast-day ${isToday ? 'today' : ''}">
+              <div class="day-label">${dayLabel}</div>
+              <div style="font-size:0.7rem;color:#a0aec0;">${dateLabel}</div>
+              <div class="day-icon">${w.icon}</div>
+              <div class="day-desc">${w.label}</div>
+              <div class="day-temps">
+                <span class="temp-high">${max}°</span>
+                <span style="color:#cbd5e0;margin:0 2px;">/</span>
+                <span class="temp-low">${min}°</span>
+              </div>
+              <div class="day-rain">&#128166; ${rain}%</div>
+            </div>
+          `;
+        }
 
         weatherEl.innerHTML = `
-          <div class="weather-icon">${weather.icon}</div>
-          <div class="weather-temp">${Math.round(current.temperature_2m)}°C</div>
-          <div class="weather-desc">${weather.label}</div>
-          <div class="weather-location">${city}</div>
-          <div class="weather-details">
-            <span>습도 ${current.relative_humidity_2m}%</span>
-            <span>풍속 ${current.wind_speed_10m} km/h</span>
-          </div>
+          <div class="weather-title">스페인 레온 · 주간 예보</div>
+          <div class="forecast-grid">${rows}</div>
         `;
       } catch {
         weatherEl.innerHTML = '<div class="weather-error">날씨 정보를 불러올 수 없습니다.</div>';

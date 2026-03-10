@@ -20,6 +20,7 @@
       background: white;
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      min-width: 300px;
     }
     h1 {
       font-size: 3rem;
@@ -30,12 +31,134 @@
       font-size: 1.1rem;
       color: #718096;
     }
+    .weather-card {
+      margin-top: 1.5rem;
+      padding: 1.2rem;
+      background: #f7fafc;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+    .weather-icon {
+      font-size: 3rem;
+      line-height: 1;
+    }
+    .weather-temp {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #2d3748;
+      margin: 0.3rem 0;
+    }
+    .weather-desc {
+      font-size: 1rem;
+      color: #4a5568;
+    }
+    .weather-location {
+      font-size: 0.85rem;
+      color: #a0aec0;
+      margin-top: 0.4rem;
+    }
+    .weather-details {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-top: 0.8rem;
+      font-size: 0.9rem;
+      color: #718096;
+    }
+    .weather-loading {
+      color: #a0aec0;
+      font-size: 0.95rem;
+      padding: 1rem 0;
+    }
+    .weather-error {
+      color: #e53e3e;
+      font-size: 0.9rem;
+      padding: 0.8rem 0;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Hello World</h1>
     <p>첫 번째 웹페이지입니다.</p>
+
+    <div class="weather-card" id="weather">
+      <div class="weather-loading">위치 정보를 가져오는 중...</div>
+    </div>
   </div>
+
+  <script>
+    const weatherCodes = {
+      0:  { label: '맑음', icon: '☀️' },
+      1:  { label: '대체로 맑음', icon: '🌤️' },
+      2:  { label: '구름 조금', icon: '⛅' },
+      3:  { label: '흐림', icon: '☁️' },
+      45: { label: '안개', icon: '🌫️' },
+      48: { label: '안개', icon: '🌫️' },
+      51: { label: '가벼운 이슬비', icon: '🌦️' },
+      53: { label: '이슬비', icon: '🌦️' },
+      55: { label: '강한 이슬비', icon: '🌧️' },
+      61: { label: '가벼운 비', icon: '🌧️' },
+      63: { label: '비', icon: '🌧️' },
+      65: { label: '강한 비', icon: '🌧️' },
+      71: { label: '가벼운 눈', icon: '🌨️' },
+      73: { label: '눈', icon: '❄️' },
+      75: { label: '강한 눈', icon: '❄️' },
+      77: { label: '싸락눈', icon: '🌨️' },
+      80: { label: '소나기', icon: '🌦️' },
+      81: { label: '비/소나기', icon: '🌧️' },
+      82: { label: '강한 소나기', icon: '⛈️' },
+      85: { label: '눈 소나기', icon: '🌨️' },
+      86: { label: '강한 눈 소나기', icon: '❄️' },
+      95: { label: '뇌우', icon: '⛈️' },
+      96: { label: '우박 동반 뇌우', icon: '⛈️' },
+      99: { label: '강한 우박 뇌우', icon: '⛈️' },
+    };
+
+    async function getWeather(lat, lon) {
+      const weatherEl = document.getElementById('weather');
+      try {
+        const [weatherRes, geoRes] = await Promise.all([
+          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`),
+          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`)
+        ]);
+
+        const weatherData = await weatherRes.json();
+        const geoData = await geoRes.json();
+
+        const current = weatherData.current;
+        const code = current.weather_code;
+        const weather = weatherCodes[code] || { label: '알 수 없음', icon: '🌡️' };
+
+        const city = geoData.address?.city || geoData.address?.town || geoData.address?.county || '현재 위치';
+
+        weatherEl.innerHTML = `
+          <div class="weather-icon">${weather.icon}</div>
+          <div class="weather-temp">${Math.round(current.temperature_2m)}°C</div>
+          <div class="weather-desc">${weather.label}</div>
+          <div class="weather-location">${city}</div>
+          <div class="weather-details">
+            <span>습도 ${current.relative_humidity_2m}%</span>
+            <span>풍속 ${current.wind_speed_10m} km/h</span>
+          </div>
+        `;
+      } catch {
+        weatherEl.innerHTML = '<div class="weather-error">날씨 정보를 불러올 수 없습니다.</div>';
+      }
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => getWeather(coords.latitude, coords.longitude),
+        () => {
+          document.getElementById('weather').innerHTML =
+            '<div class="weather-error">위치 권한을 허용하면 날씨를 표시합니다.</div>';
+        }
+      );
+    } else {
+      document.getElementById('weather').innerHTML =
+        '<div class="weather-error">이 브라우저는 위치 서비스를 지원하지 않습니다.</div>';
+    }
+  </script>
 </body>
 </html>

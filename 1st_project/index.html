@@ -118,19 +118,15 @@
     async function getWeather(lat, lon) {
       const weatherEl = document.getElementById('weather');
       try {
-        const [weatherRes, geoRes] = await Promise.all([
-          fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`),
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ko`)
-        ]);
+        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`);
 
         const weatherData = await weatherRes.json();
-        const geoData = await geoRes.json();
 
         const current = weatherData.current;
         const code = current.weather_code;
         const weather = weatherCodes[code] || { label: '알 수 없음', icon: '🌡️' };
 
-        const city = geoData.address?.city || geoData.address?.town || geoData.address?.county || '현재 위치';
+        const city = '스페인 레온';
 
         weatherEl.innerHTML = `
           <div class="weather-icon">${weather.icon}</div>
@@ -147,18 +143,8 @@
       }
     }
 
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        ({ coords }) => getWeather(coords.latitude, coords.longitude),
-        () => {
-          document.getElementById('weather').innerHTML =
-            '<div class="weather-error">위치 권한을 허용하면 날씨를 표시합니다.</div>';
-        }
-      );
-    } else {
-      document.getElementById('weather').innerHTML =
-        '<div class="weather-error">이 브라우저는 위치 서비스를 지원하지 않습니다.</div>';
-    }
+    // 스페인 레온 지방 고정 좌표
+    getWeather(42.5987, -5.5671);
   </script>
 </body>
 </html>
